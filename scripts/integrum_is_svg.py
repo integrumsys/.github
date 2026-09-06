@@ -35,15 +35,18 @@ from pathlib import Path
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 
-BLACK = "#000000"
-WHITE = "#ffffff"
+# Ink and White are the design system's own tokens. The mark was drawn in
+# pure black; it uses Ink here so it can sit beside the wordmark without the
+# two reading as a printing error.
+INK = "#0B1220"
+WHITE = "#FFFFFF"
 
 # filename stem -> (ink, ground); ground None means transparent.
 VARIANTS = {
-    "integrumsys-mark": (BLACK, None),
+    "integrumsys-mark": (INK, None),
     "integrumsys-mark-inverse": (WHITE, None),
-    "integrumsys-mark-on-white": (BLACK, WHITE),
-    "integrumsys-mark-on-black": (WHITE, BLACK),
+    "integrumsys-mark-on-white": (INK, WHITE),
+    "integrumsys-mark-on-black": (WHITE, INK),
 }
 
 SIZE = 1254
