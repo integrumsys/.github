@@ -257,6 +257,16 @@ def wordmark(text, style, ink=INK, ground=None, cap=CAP):
     return svg(W, H, [poly_svg(polys, w, ink, p, p + cap, cid)], defs, ground)
 
 
+# The mark's frame is 47 units on a 1000-unit hexagon. Sizing the mark so the
+# frame lands near the wordmark's stroke keeps the two from fighting; a lighter
+# wordmark therefore wants a smaller mark, which a fixed ratio would miss.
+FRAME_RATIO = mk.FRAME / (mk.R * 2)
+
+
+def mark_height(stroke, boost=1.0):
+    return (0.80 * stroke / FRAME_RATIO) * boost
+
+
 def lockup(kind, style, ink=INK, accent=None, ground=None, cap=CAP):
     """Lockup layouts.
 
@@ -298,7 +308,7 @@ def lockup(kind, style, ink=INK, accent=None, ground=None, cap=CAP):
         return svg(W, H, parts, defs, ground)
 
     if kind == "v":
-        mark_h = 2.30 * cap
+        mark_h = mark_height(stroke, 1.18)
         g, mark_w = mark_group(0, 0, mark_h, ink)
         W = max(main_w, mark_w) + 2 * p
         g, _ = mark_group(p + (W - 2 * p - mark_w) / 2, p, mark_h, ink)
@@ -307,7 +317,7 @@ def lockup(kind, style, ink=INK, accent=None, ground=None, cap=CAP):
         place("INTEGRUM", p + (W - 2 * p - main_w) / 2, wy, cap, ink, "c1")
         return svg(W, wy + cap + p, parts, defs, ground)
 
-    mark_h = 1.95 * cap
+    mark_h = mark_height(stroke)
     two_line = kind in ("hd", "hj")
     block_h = cap + (desc_gap + desc_cap if two_line else 0)
     total_h = max(mark_h, block_h)
@@ -340,14 +350,15 @@ def write(name, content):
     return path
 
 
-def sheet(rows, out_name, label_h=34, pad=26):
+def sheet(rows, out_path, label_h=34, pad=26, cols=1):
     """Contact sheet for review. Transparent art is flattened onto white."""
     from PIL import Image, ImageDraw, ImageFont
 
     tiles = []
     for label, name, width in rows:
-        tmp = OUT / f".tmp-{name}-{width}.png"
-        render(OUT / f"{name}.svg", tmp, width)
+        src = OUT / f"{name}.svg"
+        tmp = OUT / ".tmp.png"
+        render(src, tmp, width)
         im = Image.open(tmp).convert("RGBA")
         bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
         bg.alpha_composite(im)
@@ -358,85 +369,137 @@ def sheet(rows, out_name, label_h=34, pad=26):
     H = sum(i.height for _, i in tiles) + len(tiles) * (label_h + pad) + pad
     canvas = Image.new("RGB", (W, H), "white")
     draw = ImageDraw.Draw(canvas)
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 19)
-    except OSError:
-        font = ImageFont.load_default()
+    font = _font(20)
     y = pad
     for label, im in tiles:
-        draw.text((pad, y), label, fill=(110, 122, 140), font=font)
+        draw.text((pad, y), label, fill=(96, 110, 130), font=font)
         y += label_h
         canvas.paste(im, (pad, y))
         y += im.height + pad
-    canvas.save(OUT / out_name)
-    return OUT / out_name
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(out_path)
 
 
-SHEETS = [
+def _font(size):
+    from PIL import ImageFont
+
+    try:
+        return ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size
+        )
+    except OSError:
+        return ImageFont.load_default()
+
+
+def scale_grid(names, widths, out_path, pad=24):
+    """One row per direction, one column per render width."""
+    from PIL import Image, ImageDraw
+
+    def tile(name, w):
+        tmp = OUT / ".tmp.png"
+        render(OUT / f"{name}.svg", tmp, w)
+        im = Image.open(tmp).convert("RGBA")
+        bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
+        bg.alpha_composite(im)
+        tmp.unlink()
+        return bg.convert("RGB")
+
+    grid = [[tile(n, w) for w in widths] for _, n in names]
+    row_h = [max(i.height for i in r) for r in grid]
+    W = max(sum(i.width for i in r) for r in grid) + pad * (len(widths) + 1)
+    H = sum(row_h) + len(grid) * (34 + pad) + pad + 24
+    canvas = Image.new("RGB", (W, H), "white")
+    draw = ImageDraw.Draw(canvas)
+    f, fs = _font(20), _font(13)
+    y = pad
+    for (label, _), row, rh in zip(names, grid, row_h):
+        draw.text((pad, y), label, fill=(96, 110, 130), font=f)
+        y += 32
+        x = pad
+        for im, w in zip(row, widths):
+            canvas.paste(im, (x, y + (rh - im.height) // 2))
+            draw.text((x, y + rh + 4), f"{w}px", fill=(170, 180, 195), font=fs)
+            x += im.width + pad
+        y += rh + 24 + pad
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(out_path)
+
+
+DIRECTIONS = [
+    ("A", "square", "right angles throughout"),
+    ("B", "chamfer", "corners cut at 45 degrees"),
+    ("C", "hex", "corners cut at 30 degrees, the mark's own edge angle"),
+    ("D", "label", "square skeleton, lighter stroke, wider tracking"),
+]
+
+PIECES = [
+    ("wordmark", lambda st: wordmark("INTEGRUM", st)),
+    ("detail-EGUM", lambda st: wordmark("EGUM", st)),
+    ("lockup-horizontal", lambda st: lockup("h", st)),
+    ("lockup-descriptor", lambda st: lockup("hd", st)),
+    ("lockup-descriptor-justified", lambda st: lockup("hj", st)),
+    ("lockup-twoline", lambda st: lockup("two", st)),
+    ("lockup-stacked", lambda st: lockup("v", st)),
+    ("colour-teal-descriptor", lambda st: lockup("hd", st, accent=TEAL)),
+    ("colour-teal-twoline", lambda st: lockup("two", st, accent=TEAL)),
     (
-        "sheet-1-directions.png",
-        [
-            ("A - SQUARE   right angles, instrumentation label", "wordmark-square", 1400),
-            ("B - CHAMFER  45 degree corner cuts", "wordmark-chamfer", 1400),
-            ("C - HEX      30 degree cuts, matched to the mark's edges", "wordmark-hex", 1400),
-            ("D - LABEL    lighter stroke, wider tracking", "wordmark-label", 1400),
-        ],
-    ),
-    (
-        "sheet-2-lockups.png",
-        [
-            ("1 horizontal", "lockup-horizontal-hex", 1050),
-            ("2 descriptor, left aligned", "lockup-descriptor-hex", 1050),
-            ("3 descriptor, justified", "lockup-descriptor-justified-hex", 1050),
-            ("4 two line, equal size", "lockup-twoline-hex", 800),
-            ("5 stacked", "lockup-stacked-hex", 540),
-        ],
-    ),
-    (
-        "sheet-3-colour.png",
-        [
-            ("mono, Ink #0B1220", "lockup-descriptor-hex", 980),
-            ("accent, descriptor in Integrum Teal", "lockup-descriptor-hex-teal", 980),
-            ("reversed, white on Ink", "lockup-descriptor-hex-reversed", 980),
-            ("two line in teal - over the 10-15% accent budget", "lockup-twoline-hex-teal", 740),
-        ],
+        "colour-reversed",
+        lambda st: lockup("hd", st, ink=WHITE, accent=TEAL, ground=INK),
     ),
 ]
 
 
 def main() -> None:
+    if OUT.exists():
+        for f in sorted(OUT.rglob("*"), reverse=True):
+            f.unlink() if f.is_file() else f.rmdir()
     OUT.mkdir(parents=True, exist_ok=True)
-    for f in OUT.glob("*"):
-        f.unlink()
 
-    made = []
-    for style in STYLES:
-        made.append(write(f"wordmark-{style}", wordmark("INTEGRUM", style)))
-    for style in ("square", "chamfer", "hex"):
-        for kind, tag in (
-            ("h", "horizontal"),
-            ("hd", "descriptor"),
-            ("hj", "descriptor-justified"),
-            ("v", "stacked"),
-            ("two", "twoline"),
-        ):
-            made.append(write(f"lockup-{tag}-{style}", lockup(kind, style)))
-        made.append(write(f"lockup-descriptor-{style}-teal", lockup("hd", style, accent=TEAL)))
-        made.append(write(f"lockup-twoline-{style}-teal", lockup("two", style, accent=TEAL)))
-        made.append(
-            write(
-                f"lockup-descriptor-{style}-reversed",
-                lockup("hd", style, ink=WHITE, accent=TEAL, ground=INK),
-            )
-        )
+    n = 0
+    for letter, style, _ in DIRECTIONS:
+        folder = OUT / f"{letter}-{style}"
+        folder.mkdir(parents=True, exist_ok=True)
+        for piece, fn in PIECES:
+            (folder / f"{piece}.svg").write_text(fn(style), encoding="utf-8")
+            n += 1
 
     if not shutil.which("rsvg-convert"):
-        print("warning: rsvg-convert not on PATH, SVGs only, no sheets")
+        print(f"Wrote {n} SVGs. rsvg-convert missing, no comparison sheets.")
         return
-    for name, rows in SHEETS:
-        sheet(rows, name)
-    print(f"Wrote {len(made)} SVGs and {len(SHEETS)} sheets to "
-          f"{OUT.relative_to(HERE.parent)}")
+
+    cmp_dir = OUT / "00-COMPARE-THESE"
+    tag = {ltr: f"{ltr}-{st}" for ltr, st, _ in DIRECTIONS}
+
+    def rows(piece):
+        return [
+            (f"{ltr}  {st.upper():<8} {note}", f"{tag[ltr]}/{piece}", width)
+            for ltr, st, note in DIRECTIONS
+        ]
+
+    for piece, width, name in (
+        ("wordmark", 1400, "1-wordmark.png"),
+        ("detail-EGUM", 1000, "2-letter-detail.png"),
+        ("lockup-horizontal", 1050, "3-lockup-horizontal.png"),
+        ("lockup-descriptor", 1050, "4-lockup-descriptor.png"),
+        ("lockup-twoline", 800, "5-lockup-twoline.png"),
+    ):
+        sheet([(l, n_, width) for l, n_, width in rows(piece)], cmp_dir / name)
+
+    scale_grid(
+        [(f"{ltr}  {st.upper()}", f"{tag[ltr]}/lockup-horizontal") for ltr, st, _ in DIRECTIONS],
+        [560, 360, 240, 160, 110],
+        cmp_dir / "6-scale.png",
+    )
+    sheet(
+        [
+            ("mono, Ink #0B1220", f"{tag['C']}/lockup-descriptor", 980),
+            ("accent, descriptor in Integrum Teal", f"{tag['C']}/colour-teal-descriptor", 980),
+            ("reversed, white on Ink", f"{tag['C']}/colour-reversed", 980),
+            ("two line in teal, over the 10-15% accent budget", f"{tag['C']}/colour-teal-twoline", 740),
+        ],
+        cmp_dir / "7-colour.png",
+    )
+    print(f"Wrote {n} SVGs and 7 comparison sheets to {OUT.relative_to(HERE.parent)}")
 
 
 if __name__ == "__main__":

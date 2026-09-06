@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="5439" height="2609" viewBox="0 0 5439 2609" role="img" aria-label="Integrum Systems">
+<defs>
+  <clipPath id="c1"><rect x="0.0" y="1712.9" width="100000.0" height="700.0"/></clipPath>
+</defs>
+    <g transform="translate(1987.83,47.80) scale(1.16694)">
+      <path d="M 627.0 127.0 L 1060.0 377.0 L 1060.0 877.0 L 627.0 1127.0 L 194.0 877.0 L 194.0 377.0 Z M 241.0 404.1 L 470.0 271.9 L 470.0 394.0 L 241.0 483.3 Z M 470.0 498.0 L 470.0 982.1 L 241.0 849.9 L 241.0 587.3 Z M 627.0 181.3 L 1013.0 404.1 L 1013.0 506.8 L 634.0 359.0 L 634.0 485.0 L 1013.0 632.8 L 1013.0 849.9 L 627.0 1072.7 L 492.0 994.8 L 492.0 832.0 L 631.0 912.3 L 884.0 766.2 L 492.0 613.3 L 492.0 259.2 Z" fill="#0B1220" fill-rule="evenodd"/>
+    </g>
+    <g clip-path="url(#c1)" fill="none" stroke="#0B1220" stroke-width="58.1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="12">
+      <polyline points="225.1,1712.9 225.1,2412.9"/>
+      <polyline points="498.1,1712.9 498.1,2412.9"/>
+      <polyline points="979.0,1712.9 979.0,2412.9"/>
+      <polyline points="498.1,1712.9 979.0,2412.9"/>
+      <polyline points="1181.6,1742.0 1682.1,1742.0"/>
+      <polyline points="1431.8,1712.9 1431.8,2412.9"/>
+      <polyline points="2291.1,1742.0 1879.1,1742.0 1879.1,2383.9 2291.1,2383.9"/>
+      <polyline points="1879.1,2062.9 2211.7,2062.9"/>
+      <polyline points="3012.1,1742.0 2509.2,1742.0 2509.2,2383.9 3011.1,2383.9 3011.1,2076.9 2737.7,2076.9"/>
+      <polyline points="3248.4,1712.9 3248.4,2412.9"/>
+      <polyline points="3248.4,1742.0 3669.8,1742.0 3669.8,2017.4 3248.4,2017.4"/>
+      <polyline points="3248.4,2017.4 3669.8,2412.9"/>
+      <polyline points="3908.5,1712.9 3908.5,2383.9 4371.9,2383.9 4371.9,1712.9"/>
+      <polyline points="4610.6,2412.9 4610.6,1712.9 4912.2,2174.9 5213.9,1712.9 5213.9,2412.9"/>
+    </g>
+</svg>

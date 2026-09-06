@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="6659" height="1624" viewBox="0 0 6659 1624" role="img" aria-label="Integrum Systems">
+<defs>
+  <clipPath id="c1"><rect x="0.0" y="196.0" width="100000.0" height="700.0"/></clipPath>
+  <clipPath id="c2"><rect x="0.0" y="1134.0" width="100000.0" height="294.0"/></clipPath>
+</defs>
+    <g transform="translate(4.16,191.94) scale(0.98894)">
+      <path d="M 627.0 127.0 L 1060.0 377.0 L 1060.0 877.0 L 627.0 1127.0 L 194.0 877.0 L 194.0 377.0 Z M 241.0 404.1 L 470.0 271.9 L 470.0 394.0 L 241.0 483.3 Z M 470.0 498.0 L 470.0 982.1 L 241.0 849.9 L 241.0 587.3 Z M 627.0 181.3 L 1013.0 404.1 L 1013.0 506.8 L 634.0 359.0 L 634.0 485.0 L 1013.0 632.8 L 1013.0 849.9 L 627.0 1072.7 L 492.0 994.8 L 492.0 832.0 L 631.0 912.3 L 884.0 766.2 L 492.0 613.3 L 492.0 259.2 Z" fill="#0B1220" fill-rule="evenodd"/>
+    </g>
+    <g clip-path="url(#c1)" fill="none" stroke="#0B1220" stroke-width="58.1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="12">
+      <polyline points="1445.5,196.0 1445.5,896.0"/>
+      <polyline points="1718.5,196.0 1718.5,896.0"/>
+      <polyline points="2199.4,196.0 2199.4,896.0"/>
+      <polyline points="1718.5,196.0 2199.4,896.0"/>
+      <polyline points="2402.0,225.1 2902.5,225.1"/>
+      <polyline points="2652.3,196.0 2652.3,896.0"/>
+      <polyline points="3511.5,225.1 3099.6,225.1 3099.6,867.0 3511.5,867.0"/>
+      <polyline points="3099.6,546.0 3432.2,546.0"/>
+      <polyline points="4232.5,225.1 3729.6,225.1 3729.6,867.0 4231.5,867.0 4231.5,560.0 3958.1,560.0"/>
+      <polyline points="4468.8,196.0 4468.8,896.0"/>
+      <polyline points="4468.8,225.1 4890.2,225.1 4890.2,500.5 4468.8,500.5"/>
+      <polyline points="4468.8,500.5 4890.2,896.0"/>
+      <polyline points="5128.9,196.0 5128.9,867.0 5592.3,867.0 5592.3,196.0"/>
+      <polyline points="5831.0,896.0 5831.0,196.0 6132.7,658.0 6434.4,196.0 6434.4,896.0"/>
+    </g>
+    <g clip-path="url(#c2)" fill="none" stroke="#0E9AA7" stroke-width="24.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="12">
+      <polyline points="1610.5,1146.2 1428.6,1146.2 1428.6,1281.0 1598.3,1281.0 1598.3,1415.8 1416.4,1415.8"/>
+      <polyline points="1765.3,1134.0 1858.2,1275.1 1951.1,1134.0"/>
+      <polyline points="1858.2,1275.1 1858.2,1428.0"/>
+      <polyline points="2297.0,1146.2 2115.1,1146.2 2115.1,1281.0 2284.8,1281.0 2284.8,1415.8 2102.9,1415.8"/>
+      <polyline points="2447.8,1146.2 2658.0,1146.2"/>
+      <polyline points="2552.9,1134.0 2552.9,1428.0"/>
+      <polyline points="2985.2,1146.2 2812.2,1146.2 2812.2,1415.8 2985.2,1415.8"/>
+      <polyline points="2812.2,1281.0 2951.9,1281.0"/>
+      <polyline points="3144.1,1428.0 3144.1,1134.0 3270.8,1328.0 3397.6,1134.0 3397.6,1428.0"/>
+      <polyline points="3754.6,1146.2 3572.8,1146.2 3572.8,1281.0 3742.4,1281.0 3742.4,1415.8 3560.6,1415.8"/>
+    </g>
+</svg>
