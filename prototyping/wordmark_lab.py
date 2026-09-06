@@ -46,7 +46,6 @@ STYLES = {
     "square": dict(stroke=0.120, track=0.170, cut_h=0.00, cut_v=0.00),
     "chamfer": dict(stroke=0.120, track=0.170, cut_h=0.21, cut_v=0.21),
     "hex": dict(stroke=0.120, track=0.190, cut_h=0.27, cut_v=0.156),
-    "label": dict(stroke=0.083, track=0.270, cut_h=0.00, cut_v=0.00),
 }
 
 # Ink width of each glyph as a fraction of cap height.
@@ -100,7 +99,14 @@ def skeleton(ch, H, w):
     if ch == "U":
         return W, [[(a, 0), (a, H - a), (W - a, H - a), (W - a, 0)]]
     if ch == "M":
-        return W, [[(a, H), (a, 0), (W / 2, 0.660 * H), (W - a, 0), (W - a, H)]]
+        # Stems are separate strokes, exactly as N's are. Drawn as one
+        # polyline the two peaks become interior corners, and a corner
+        # treatment then cuts them back below the cap line.
+        return W, [
+            [(a, 0), (a, H)],
+            [(W - a, 0), (W - a, H)],
+            [(a, 0), (W / 2, 0.660 * H), (W - a, 0)],
+        ]
     if ch == "S":
         return W, [
             [
@@ -429,7 +435,6 @@ DIRECTIONS = [
     ("A", "square", "right angles throughout"),
     ("B", "chamfer", "corners cut at 45 degrees"),
     ("C", "hex", "corners cut at 30 degrees, the mark's own edge angle"),
-    ("D", "label", "square skeleton, lighter stroke, wider tracking"),
 ]
 
 PIECES = [
