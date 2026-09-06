@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Measurements on the generated wordmark. Run after wordmark_lab.py.
+Measurements on the generated wordmark. Run after integrum_wordmark.py.
 
 Stroke weight is guaranteed by construction, so there is no point measuring it.
 What can go wrong and cannot be seen by eye is checked here instead:
@@ -12,7 +12,7 @@ What can go wrong and cannot be seen by eye is checked here instead:
   clots           local ink density where a diagonal lands on a stem
   fill-in         counters surviving at small sizes
 
-    python3 prototyping/qa.py
+    python3 scripts/qa_wordmark.py
 """
 
 import math
@@ -27,7 +27,7 @@ from PIL import Image
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-import wordmark_lab as L  # noqa: E402
+import integrum_wordmark as L  # noqa: E402
 
 STYLE = "hex"
 WORDS = ("INTEGRUM", "SYSTEMS")

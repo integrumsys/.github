@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="5013" height="1092" viewBox="0 0 5013 1092" role="img" aria-label="Integrum Systems">
+<defs>
+  <clipPath id="cap-hex"><rect x="0.0" y="196.0" width="5012.8" height="700.0"/></clipPath>
+</defs>
+    <g clip-path="url(#cap-hex)" fill="none" stroke="#FFFFFF" stroke-width="84.0" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="12">
+      <polyline points="238.0,196.0 238.0,896.0"/>
+      <polyline points="514.7,196.0 514.7,896.0"/>
+      <polyline points="969.7,196.0 969.7,896.0"/>
+      <polyline points="514.7,196.0 969.7,896.0"/>
+      <polyline points="1099.8,238.0 1600.3,238.0"/>
+      <polyline points="1350.1,196.0 1350.1,896.0"/>
+      <polyline points="2060.0,238.0 1840.5,238.0 1661.0,341.7 1661.0,750.3 1840.5,854.0 2060.0,854.0"/>
+      <polyline points="1661.0,546.0 1980.6,546.0"/>
+      <polyline points="2649.2,238.0 2348.2,238.0 2159.2,347.2 2159.2,744.8 2348.2,854.0 2446.2,854.0 2635.2,744.8 2635.2,627.7 2518.0,560.0 2374.8,560.0"/>
+      <polyline points="2877.0,196.0 2877.0,896.0"/>
+      <polyline points="2877.0,238.0 3094.5,238.0 3272.5,340.8 3272.5,397.7 3094.5,500.5 2877.0,500.5"/>
+      <polyline points="2969.3,500.5 3272.5,896.0"/>
+      <polyline points="3486.3,196.0 3486.3,744.8 3675.3,854.0 3734.8,854.0 3923.8,744.8 3923.8,196.0"/>
+      <polyline points="4197.3,196.0 4197.3,896.0"/>
+      <polyline points="4774.8,196.0 4774.8,896.0"/>
+      <polyline points="4197.3,196.0 4407.1,531.6 4565.1,531.6 4774.8,196.0"/>
+    </g>
+</svg>

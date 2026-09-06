@@ -28,15 +28,14 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / "out"
-sys.path.insert(0, str(HERE.parent / "scripts"))
+OUT = HERE.parent / "assets"
+sys.path.insert(0, str(HERE))
 
-import integrum_is_svg as mk  # noqa: E402  (the locked mark, reused not copied)
+import integrum_is_svg as mk  # noqa: E402  (the mark, imported not copied)
 
-INK = "#0B1220"
-TEAL = "#0E9AA7"
-WHITE = "#FFFFFF"
-FOG = "#F4F7FB"
+INK = mk.INK
+WHITE = mk.WHITE
+TEAL = "#0E9AA7"  # available via `accent`, not shipped as an asset
 
 CAP = 700.0  # design cap height; everything else is a ratio of it
 STYLE = "hex"
@@ -404,159 +403,51 @@ def render(svg_path, png_path, width):
     )
 
 
-def write(name, content):
-    path = OUT / f"{name}.svg"
-    path.write_text(content, encoding="utf-8")
-    return path
+# filename suffix -> (ink, ground); ground None means transparent.
+GROUNDS = {
+    "": (INK, None),
+    "-inverse": (WHITE, None),
+    "-on-white": (INK, WHITE),
+    "-on-black": (WHITE, INK),
+}
 
+# filename stem -> builder taking (ink, ground).
+PIECES = {
+    "integrumsys-wordmark": lambda i, g: wordmark("INTEGRUM", STYLE, ink=i, ground=g),
+    "integrumsys-lockup": lambda i, g: lockup("h", STYLE, ink=i, ground=g),
+    "integrumsys-lockup-stacked": lambda i, g: lockup("v", STYLE, ink=i, ground=g),
+    "integrumsys-lockup-descriptor": lambda i, g: lockup("hd", STYLE, ink=i, ground=g),
+}
 
-def sheet(rows, out_path, label_h=34, pad=26, cols=1):
-    """Contact sheet for review. Transparent art is flattened onto white."""
-    from PIL import Image, ImageDraw, ImageFont
-
-    tiles = []
-    for label, name, width in rows:
-        src = OUT / f"{name}.svg"
-        tmp = OUT / ".tmp.png"
-        render(src, tmp, width)
-        im = Image.open(tmp).convert("RGBA")
-        bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
-        bg.alpha_composite(im)
-        tiles.append((label, bg.convert("RGB")))
-        tmp.unlink()
-
-    W = max(i.width for _, i in tiles) + 2 * pad
-    H = sum(i.height for _, i in tiles) + len(tiles) * (label_h + pad) + pad
-    canvas = Image.new("RGB", (W, H), "white")
-    draw = ImageDraw.Draw(canvas)
-    font = _font(20)
-    y = pad
-    for label, im in tiles:
-        draw.text((pad, y), label, fill=(96, 110, 130), font=font)
-        y += label_h
-        canvas.paste(im, (pad, y))
-        y += im.height + pad
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(out_path)
-
-
-def _font(size):
-    from PIL import ImageFont
-
-    try:
-        return ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size
-        )
-    except OSError:
-        return ImageFont.load_default()
-
-
-def scale_grid(names, widths, out_path, pad=24):
-    """One row per direction, one column per render width."""
-    from PIL import Image, ImageDraw
-
-    def tile(name, w):
-        tmp = OUT / ".tmp.png"
-        render(OUT / f"{name}.svg", tmp, w)
-        im = Image.open(tmp).convert("RGBA")
-        bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
-        bg.alpha_composite(im)
-        tmp.unlink()
-        return bg.convert("RGB")
-
-    grid = [[tile(n, w) for w in widths] for _, n in names]
-    row_h = [max(i.height for i in r) for r in grid]
-    W = max(sum(i.width for i in r) for r in grid) + pad * (len(widths) + 1)
-    H = sum(row_h) + len(grid) * (34 + pad) + pad + 24
-    canvas = Image.new("RGB", (W, H), "white")
-    draw = ImageDraw.Draw(canvas)
-    f, fs = _font(20), _font(13)
-    y = pad
-    for (label, _), row, rh in zip(names, grid, row_h):
-        draw.text((pad, y), label, fill=(96, 110, 130), font=f)
-        y += 32
-        x = pad
-        for im, w in zip(row, widths):
-            canvas.paste(im, (x, y + (rh - im.height) // 2))
-            draw.text((x, y + rh + 4), f"{w}px", fill=(170, 180, 195), font=fs)
-            x += im.width + pad
-        y += rh + 24 + pad
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(out_path)
-
-
-PIECES = [
-    ("wordmark", lambda: wordmark("INTEGRUM", STYLE)),
-    ("letters", lambda: wordmark("INTEGRUMSY", STYLE)),
-    ("lockup-horizontal", lambda: lockup("h", STYLE)),
-    ("lockup-descriptor", lambda: lockup("hd", STYLE)),
-    ("lockup-descriptor-justified", lambda: lockup("hj", STYLE)),
-    ("lockup-twoline", lambda: lockup("two", STYLE)),
-    ("lockup-stacked", lambda: lockup("v", STYLE)),
-    ("colour-teal-descriptor", lambda: lockup("hd", STYLE, accent=TEAL)),
-    ("colour-teal-twoline", lambda: lockup("two", STYLE, accent=TEAL)),
-    (
-        "colour-reversed",
-        lambda: lockup("hd", STYLE, ink=WHITE, accent=TEAL, ground=INK),
-    ),
-]
-
-SHEETS = [
-    (
-        "1-wordmark.png",
-        [
-            ("INTEGRUM", "wordmark", 1400),
-            ("INTEGRUM over SYSTEMS, equal size", "lockup-twoline", 1000),
-        ],
-    ),
-    (
-        "2-letters.png",
-        [("the ten glyphs the two words need", "letters", 1500)],
-    ),
-    (
-        "3-lockups.png",
-        [
-            ("horizontal", "lockup-horizontal", 1050),
-            ("with SYSTEMS descriptor, left aligned", "lockup-descriptor", 1050),
-            ("with SYSTEMS descriptor, justified", "lockup-descriptor-justified", 1050),
-            ("stacked", "lockup-stacked", 540),
-        ],
-    ),
-    (
-        "4-colour.png",
-        [
-            ("mono, Ink #0B1220", "lockup-descriptor", 980),
-            ("descriptor in Integrum Teal", "colour-teal-descriptor", 980),
-            ("reversed, white on Ink", "colour-reversed", 980),
-            ("two line in teal, over the 10-15% accent budget", "colour-teal-twoline", 740),
-        ],
-    ),
-]
+# Lockups are wide, so avatar sizes do not apply; these are slide and
+# signature widths. Only the transparent colourways get raster copies.
+PNG_PIECES = ("integrumsys-lockup", "integrumsys-lockup-stacked")
+PNG_GROUNDS = ("", "-inverse")
+PNG_WIDTHS = (1200, 2400)
 
 
 def main() -> None:
-    if OUT.exists():
-        for f in sorted(OUT.rglob("*"), reverse=True):
-            f.unlink() if f.is_file() else f.rmdir()
     OUT.mkdir(parents=True, exist_ok=True)
+    written = []
+    for stem, build_piece in PIECES.items():
+        for suffix, (ink, ground) in GROUNDS.items():
+            out = OUT / f"{stem}{suffix}.svg"
+            out.write_text(build_piece(ink, ground), encoding="utf-8")
+            written.append(out)
 
-    for name, fn in PIECES:
-        (OUT / f"{name}.svg").write_text(fn(), encoding="utf-8")
+    if shutil.which("rsvg-convert"):
+        for stem in PNG_PIECES:
+            for suffix in PNG_GROUNDS:
+                svg_path = OUT / f"{stem}{suffix}.svg"
+                for width in PNG_WIDTHS:
+                    png = OUT / f"{stem}{suffix}-{width}.png"
+                    render(svg_path, png, width)
+                    written.append(png)
+    else:
+        print("warning: rsvg-convert not on PATH, skipping PNG export")
 
-    if not shutil.which("rsvg-convert"):
-        print(f"Wrote {len(PIECES)} SVGs. rsvg-convert missing, no review sheets.")
-        return
-
-    review = OUT / "00-REVIEW"
-    for name, rows in SHEETS:
-        sheet(rows, review / name)
-    scale_grid(
-        [("wordmark", "wordmark"), ("horizontal lockup", "lockup-horizontal")],
-        [560, 360, 240, 160, 110],
-        review / "5-scale.png",
-    )
-    print(f"Wrote {len(PIECES)} SVGs and {len(SHEETS) + 1} review sheets "
-          f"to {OUT.relative_to(HERE.parent)}")
+    for out in written:
+        print(f"Wrote {out}")
 
 
 if __name__ == "__main__":
