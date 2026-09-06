@@ -21,9 +21,16 @@ Writes four colourways into assets/, relative to the repo root. The default is
 black ink on a transparent ground - the most reusable, and what "the mark"
 means when a filename carries no qualifier. The other three are variations of
 it: the same geometry, differing only in ink and ground.
+
+Each colourway is also rasterized to PNG at PNG_SIZES, for the places that
+will not take an SVG (GitHub avatars among them). That step needs
+rsvg-convert on PATH and is skipped with a warning if it is missing; the SVGs
+are always written.
 """
 
 import math
+import shutil
+import subprocess
 from pathlib import Path
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
@@ -40,6 +47,10 @@ VARIANTS = {
 }
 
 SIZE = 1254
+
+# GitHub wants an avatar of at least 500px and crops it to a rounded square;
+# the hexagon sits well inside that crop at these sizes.
+PNG_SIZES = (512, 1024)
 
 # Hexagon: regular, pointy-top, centred in the viewBox.
 CX = CY = SIZE / 2
@@ -158,11 +169,31 @@ def build(ink, ground):
 """
 
 
+def rasterize(svg, png, size):
+    subprocess.run(
+        ["rsvg-convert", "-w", str(size), "-h", str(size), str(svg), "-o", str(png)],
+        check=True,
+    )
+
+
 def main() -> None:
     ASSETS.mkdir(parents=True, exist_ok=True)
+    written = []
     for stem, (ink, ground) in VARIANTS.items():
         out = ASSETS / f"{stem}.svg"
         out.write_text(build(ink, ground), encoding="utf-8")
+        written.append(out)
+
+    if shutil.which("rsvg-convert"):
+        for svg in list(written):
+            for size in PNG_SIZES:
+                png = svg.with_name(f"{svg.stem}-{size}.png")
+                rasterize(svg, png, size)
+                written.append(png)
+    else:
+        print("warning: rsvg-convert not on PATH, skipping PNG export")
+
+    for out in written:
         print(f"Wrote {out}")
 
 
