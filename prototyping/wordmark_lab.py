@@ -39,12 +39,11 @@ WHITE = "#FFFFFF"
 FOG = "#F4F7FB"
 
 CAP = 700.0  # design cap height; everything else is a ratio of it
+STYLE = "hex"
 
 # Corner treatments. stroke/track/cut are fractions of cap height.
 # cut_h > cut_v tilts the chamfer toward the hexagon's own 30-degree edges.
 STYLES = {
-    "square": dict(stroke=0.120, track=0.170, cut_h=0.00, cut_v=0.00),
-    "chamfer": dict(stroke=0.120, track=0.170, cut_h=0.21, cut_v=0.21),
     "hex": dict(stroke=0.120, track=0.190, cut_h=0.27, cut_v=0.156),
 }
 
@@ -58,14 +57,27 @@ WIDTHS = {
 # Optical corrections where two flat sides face each other and the metric
 # gap reads too open. Fractions of cap height, negative tightens.
 KERN = {
-    ("T", "E"): -0.030, ("N", "T"): -0.022, ("G", "R"): -0.014,
-    ("R", "U"): -0.012, ("U", "M"): -0.012, ("Y", "S"): -0.038,
-    ("T", "S"): -0.030, ("E", "M"): -0.014, ("S", "Y"): -0.028,
+    ("E", "G"): -0.1082,
+    ("E", "M"): +0.0023,
+    ("G", "R"): +0.0354,
+    ("I", "N"): +0.0853,
+    ("M", "S"): +0.0409,
+    ("N", "T"): -0.0641,
+    ("R", "U"): -0.0046,
+    ("S", "T"): -0.0641,
+    ("S", "Y"): +0.0661,
+    ("T", "E"): -0.1634,
+    ("U", "M"): +0.0808,
+    ("Y", "S"): +0.0375,
 }
 
 
-def skeleton(ch, H, w):
-    """Centre-line polylines for one glyph in a box of width WIDTHS[ch]*H."""
+def skeleton(ch, H, w, ch_=0.0, cv_=0.0):
+    """Centre-line polylines for one glyph in a box of width WIDTHS[ch]*H.
+
+    The cut sizes are passed in because Y's stem has to meet the cut across
+    its vertex, not the uncut vertex underneath it.
+    """
     a = w / 2
     W = WIDTHS[ch] * H
     if ch == "I":
@@ -94,7 +106,7 @@ def skeleton(ch, H, w):
         return W, [
             [(a, 0), (a, H)],
             [(a, a), (W - a, a), (W - a, 0.435 * H), (a, 0.435 * H)],
-            [(a, 0.435 * H), (W - a, H)],
+            [(0.28 * W, 0.435 * H), (W - a, H)],
         ]
     if ch == "U":
         return W, [[(a, 0), (a, H - a), (W - a, H - a), (W - a, 0)]]
@@ -115,9 +127,15 @@ def skeleton(ch, H, w):
             ]
         ]
     if ch == "Y":
+        # The vertex sits low so that once the cut is taken across it, the
+        # chord lands near 0.48H. The stem starts at that chord: attached to
+        # the uncut vertex it would hang below the cut, detached.
+        vy = 0.675 * H
+        leg = math.hypot(W / 2 - a, vy)
+        d = min((ch_ + cv_) / 2, 0.45 * leg)
         return W, [
-            [(a, 0), (W / 2, 0.480 * H), (W - a, 0)],
-            [(W / 2, 0.480 * H), (W / 2, H)],
+            [(a, 0), (W / 2, vy), (W - a, 0)],
+            [(W / 2, vy * (1 - d / leg)), (W / 2, H)],
         ]
     raise KeyError(ch)
 
@@ -139,37 +157,55 @@ def chamfer(pts, ch_, cv_):
     out = [pts[0]]
     for i in range(1, len(pts) - 1):
         (px, py), (qx, qy), (rx, ry) = pts[i - 1], pts[i], pts[i + 1]
+        legs = []
         for tx, ty in ((px, py), (rx, ry)):
             dx, dy = tx - qx, ty - qy
-            leg = math.hypot(dx, dy)
-            if leg < 1e-9:
+            length = math.hypot(dx, dy)
+            if length < 1e-9:
                 continue
-            u = (dx / leg, dy / leg)
-            d = min(_cut(u, ch_, cv_), 0.45 * leg)
-            out.append((qx + u[0] * d, qy + u[1] * d))
+            u = (dx / length, dy / length)
+            legs.append((u, _cut(u, ch_, cv_), length))
+        if len(legs) < 2:
+            continue
+        # Clamp both cutbacks by one factor. Clamping them independently
+        # shortens one leg only, which tilts the cut off the family angle.
+        scale = min(1.0, *(0.45 * ln / d for _, d, ln in legs if d > 0))
+        for u, d, _ in legs:
+            out.append((qx + u[0] * d * scale, qy + u[1] * d * scale))
     out.append(pts[-1])
     return out
 
 
-def word(text, H, style):
-    """Absolute-coordinate polylines for a word, plus its total ink width."""
+def word_parts(text, H, style):
+    """Per-letter polylines in absolute coordinates, plus total width.
+
+    Kerned letters can overlap horizontally, so a rendered word cannot be cut
+    back into letters by looking for blank columns. Anything measuring one
+    letter against its neighbour has to come from here.
+    """
     s = STYLES[style]
     w, track = s["stroke"] * H, s["track"] * H
     ch_, cv_ = s["cut_h"] * H, s["cut_v"] * H
-    polys, x = [], 0.0
+    parts, x = [], 0.0
     for i, chx in enumerate(text):
         if chx == " ":
             x += track * 2.2
             continue
-        gw, strokes = skeleton(chx, H, w)
-        for pl in strokes:
-            pl = chamfer(pl, ch_, cv_)
-            polys.append([(px + x, py) for px, py in pl])
+        gw, strokes = skeleton(chx, H, w, ch_, cv_)
+        parts.append(
+            (chx, [[(px + x, py) for px, py in chamfer(pl, ch_, cv_)] for pl in strokes])
+        )
         if i < len(text) - 1:
             x += gw + track + KERN.get((chx, text[i + 1]), 0.0) * H
         else:
             x += gw
-    return x, polys, w
+    return x, parts, w
+
+
+def word(text, H, style):
+    """Absolute-coordinate polylines for a word, plus its total ink width."""
+    total, parts, w = word_parts(text, H, style)
+    return total, [pl for _, pls in parts for pl in pls], w
 
 
 def word_width(text, H, style):
@@ -253,8 +289,13 @@ def svg(width, height, parts, defs, ground=None):
 PAD = 0.28  # margin around artwork, as a fraction of cap height
 
 
-def wordmark(text, style, ink=INK, ground=None, cap=CAP):
-    w_total, polys, w = word(text, cap, style)
+def wordmark(text, style, ink=INK, ground=None, cap=CAP, only=None):
+    """`only` renders just that letter index on the full canvas, for QA."""
+    w_total, parts, w = word_parts(text, cap, style)
+    if only is None:
+        polys = [pl for _, pls in parts for pl in pls]
+    else:
+        polys = list(parts[only][1])
     p = PAD * cap
     polys = [[(x + p, y + p) for x, y in pl] for pl in polys]
     cid = f"cap-{style}"
@@ -314,14 +355,27 @@ def lockup(kind, style, ink=INK, accent=None, ground=None, cap=CAP):
         return svg(W, H, parts, defs, ground)
 
     if kind == "v":
+        # Carrying the descriptor makes the stacked block far less wide than
+        # it is tall, which a 6.7:1 wordmark under a mark otherwise is not.
         mark_h = mark_height(stroke, 1.18)
         g, mark_w = mark_group(0, 0, mark_h, ink)
         W = max(main_w, mark_w) + 2 * p
         g, _ = mark_group(p + (W - 2 * p - mark_w) / 2, p, mark_h, ink)
         parts.append(g)
         wy = p + mark_h + 0.50 * cap
-        place("INTEGRUM", p + (W - 2 * p - main_w) / 2, wy, cap, ink, "c1")
-        return svg(W, wy + cap + p, parts, defs, ground)
+        left = p + (W - 2 * p - main_w) / 2
+        place("INTEGRUM", left, wy, cap, ink, "c1")
+        dy = wy + cap + desc_gap
+        place(
+            "SYSTEMS",
+            left,
+            dy,
+            desc_cap,
+            accent,
+            "c2",
+            track=fit_track("SYSTEMS", desc_cap, style, main_w),
+        )
+        return svg(W, dy + desc_cap + p, parts, defs, ground)
 
     mark_h = mark_height(stroke)
     two_line = kind in ("hd", "hj")
@@ -431,25 +485,51 @@ def scale_grid(names, widths, out_path, pad=24):
     canvas.save(out_path)
 
 
-DIRECTIONS = [
-    ("A", "square", "right angles throughout"),
-    ("B", "chamfer", "corners cut at 45 degrees"),
-    ("C", "hex", "corners cut at 30 degrees, the mark's own edge angle"),
-]
-
 PIECES = [
-    ("wordmark", lambda st: wordmark("INTEGRUM", st)),
-    ("detail-EGUM", lambda st: wordmark("EGUM", st)),
-    ("lockup-horizontal", lambda st: lockup("h", st)),
-    ("lockup-descriptor", lambda st: lockup("hd", st)),
-    ("lockup-descriptor-justified", lambda st: lockup("hj", st)),
-    ("lockup-twoline", lambda st: lockup("two", st)),
-    ("lockup-stacked", lambda st: lockup("v", st)),
-    ("colour-teal-descriptor", lambda st: lockup("hd", st, accent=TEAL)),
-    ("colour-teal-twoline", lambda st: lockup("two", st, accent=TEAL)),
+    ("wordmark", lambda: wordmark("INTEGRUM", STYLE)),
+    ("letters", lambda: wordmark("INTEGRUMSY", STYLE)),
+    ("lockup-horizontal", lambda: lockup("h", STYLE)),
+    ("lockup-descriptor", lambda: lockup("hd", STYLE)),
+    ("lockup-descriptor-justified", lambda: lockup("hj", STYLE)),
+    ("lockup-twoline", lambda: lockup("two", STYLE)),
+    ("lockup-stacked", lambda: lockup("v", STYLE)),
+    ("colour-teal-descriptor", lambda: lockup("hd", STYLE, accent=TEAL)),
+    ("colour-teal-twoline", lambda: lockup("two", STYLE, accent=TEAL)),
     (
         "colour-reversed",
-        lambda st: lockup("hd", st, ink=WHITE, accent=TEAL, ground=INK),
+        lambda: lockup("hd", STYLE, ink=WHITE, accent=TEAL, ground=INK),
+    ),
+]
+
+SHEETS = [
+    (
+        "1-wordmark.png",
+        [
+            ("INTEGRUM", "wordmark", 1400),
+            ("INTEGRUM over SYSTEMS, equal size", "lockup-twoline", 1000),
+        ],
+    ),
+    (
+        "2-letters.png",
+        [("the ten glyphs the two words need", "letters", 1500)],
+    ),
+    (
+        "3-lockups.png",
+        [
+            ("horizontal", "lockup-horizontal", 1050),
+            ("with SYSTEMS descriptor, left aligned", "lockup-descriptor", 1050),
+            ("with SYSTEMS descriptor, justified", "lockup-descriptor-justified", 1050),
+            ("stacked", "lockup-stacked", 540),
+        ],
+    ),
+    (
+        "4-colour.png",
+        [
+            ("mono, Ink #0B1220", "lockup-descriptor", 980),
+            ("descriptor in Integrum Teal", "colour-teal-descriptor", 980),
+            ("reversed, white on Ink", "colour-reversed", 980),
+            ("two line in teal, over the 10-15% accent budget", "colour-teal-twoline", 740),
+        ],
     ),
 ]
 
@@ -460,51 +540,23 @@ def main() -> None:
             f.unlink() if f.is_file() else f.rmdir()
     OUT.mkdir(parents=True, exist_ok=True)
 
-    n = 0
-    for letter, style, _ in DIRECTIONS:
-        folder = OUT / f"{letter}-{style}"
-        folder.mkdir(parents=True, exist_ok=True)
-        for piece, fn in PIECES:
-            (folder / f"{piece}.svg").write_text(fn(style), encoding="utf-8")
-            n += 1
+    for name, fn in PIECES:
+        (OUT / f"{name}.svg").write_text(fn(), encoding="utf-8")
 
     if not shutil.which("rsvg-convert"):
-        print(f"Wrote {n} SVGs. rsvg-convert missing, no comparison sheets.")
+        print(f"Wrote {len(PIECES)} SVGs. rsvg-convert missing, no review sheets.")
         return
 
-    cmp_dir = OUT / "00-COMPARE-THESE"
-    tag = {ltr: f"{ltr}-{st}" for ltr, st, _ in DIRECTIONS}
-
-    def rows(piece):
-        return [
-            (f"{ltr}  {st.upper():<8} {note}", f"{tag[ltr]}/{piece}", width)
-            for ltr, st, note in DIRECTIONS
-        ]
-
-    for piece, width, name in (
-        ("wordmark", 1400, "1-wordmark.png"),
-        ("detail-EGUM", 1000, "2-letter-detail.png"),
-        ("lockup-horizontal", 1050, "3-lockup-horizontal.png"),
-        ("lockup-descriptor", 1050, "4-lockup-descriptor.png"),
-        ("lockup-twoline", 800, "5-lockup-twoline.png"),
-    ):
-        sheet([(l, n_, width) for l, n_, width in rows(piece)], cmp_dir / name)
-
+    review = OUT / "00-REVIEW"
+    for name, rows in SHEETS:
+        sheet(rows, review / name)
     scale_grid(
-        [(f"{ltr}  {st.upper()}", f"{tag[ltr]}/lockup-horizontal") for ltr, st, _ in DIRECTIONS],
+        [("wordmark", "wordmark"), ("horizontal lockup", "lockup-horizontal")],
         [560, 360, 240, 160, 110],
-        cmp_dir / "6-scale.png",
+        review / "5-scale.png",
     )
-    sheet(
-        [
-            ("mono, Ink #0B1220", f"{tag['C']}/lockup-descriptor", 980),
-            ("accent, descriptor in Integrum Teal", f"{tag['C']}/colour-teal-descriptor", 980),
-            ("reversed, white on Ink", f"{tag['C']}/colour-reversed", 980),
-            ("two line in teal, over the 10-15% accent budget", f"{tag['C']}/colour-teal-twoline", 740),
-        ],
-        cmp_dir / "7-colour.png",
-    )
-    print(f"Wrote {n} SVGs and 7 comparison sheets to {OUT.relative_to(HERE.parent)}")
+    print(f"Wrote {len(PIECES)} SVGs and {len(SHEETS) + 1} review sheets "
+          f"to {OUT.relative_to(HERE.parent)}")
 
 
 if __name__ == "__main__":
